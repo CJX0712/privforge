@@ -1,0 +1,82 @@
+# PrivForge - differential privacy machine learning system
+# Author: 晨星
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "privforge"
+version = "0.1.0"
+description = "PrivForge: a differentially private machine learning system"
+authors = [{ name = "晨星" }]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "numpy==2.5.3",
+    "scipy==1.16.3",
+    "scikit-learn==1.6.1",
+    "diffprivlib==0.6.6",
+    "optuna==5.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==9.1.1", "pytest-cov==7.1.0", "ruff==0.16.9"]
+
+[tool.setuptools]
+packages = [
+    "privforge",
+    "privforge.core",
+    "privforge.data",
+    "privforge.domain",
+    "privforge.training",
+    "privforge.eval",
+    "privforge.hpo",
+    "privforge.pipeline",
+    "privforge.backends",
+]
+
+# ---------------------------------------------------------------------------
+# pytest: pythonpath is REQUIRED.
+# Without it `import privforge` fails on a clean checkout and CI goes red.
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = [
+    "error::diffprivlib.utils.PrivacyLeakWarning",
+]
+
+# ---------------------------------------------------------------------------
+# ruff: config must be committed BEFORE `ruff format` is ever run, otherwise
+# local formatting and CI formatting disagree.
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "build",
+    "dist",
+    ".ruff_cache",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF"]
+ignore = [
+    "E731",   # lambda assignment: used for small callables in tables
+    "RUF001", # the project intentionally ships Chinese docstrings
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]  # tests deliberately assert that exceptions are raised
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
