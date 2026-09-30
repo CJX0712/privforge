@@ -97,10 +97,14 @@ class AquaDP:
         cfg = self.config
         fallback: str | None = None
 
-        # 1) flagship + fixed-C baseline (S1 comparison pair)
+        # 1) flagship + fixed-C baseline (S1 comparison pair).
+        # The fallback baseline MUST use the same RNG stream ("B4") as the
+        # benchmark's B4 row: S1's worst-case guarantee ("approximately the
+        # baseline") is only real if the fallback IS that baseline, not an
+        # independent re-draw that can land below it.
         aqua = self._flagship_model(cfg).fit(train, budget, make_rng(seed, "aqua", dataset_name))
         base = self._baseline_model(cfg, train).fit(
-            train, budget, make_rng(seed, "base", dataset_name)
+            train, budget, make_rng(seed, "B4", dataset_name)
         )
         aqua_acc = aqua.accuracy(test.X, test.y)
         base_acc = base.accuracy(test.X, test.y)
