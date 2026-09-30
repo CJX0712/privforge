@@ -260,3 +260,29 @@ def test_dod_evaluation_handles_multi_dataset_sweep():
     assert d["DoD-6_pass"] is True
     assert d["DoD-7_pass"] is True
     assert d["all_passed"] is True
+
+
+def test_dod_reference_is_strongest_single_baseline_not_envelope():
+    """SPEC section 4: the DoD reference is the strongest SINGLE baseline.
+
+    The reference method is picked per dataset by MEAN accuracy, and every
+    seed is paired against that same method. A per-seed max-over-methods
+    envelope is an oracle no single method can beat (B4 wins seed1, B2 wins
+    seed2 -> the envelope is 0.70 on both seeds while every real method is
+    below it on one seed) -- that bug made DoD-2/4 structurally unpassable.
+    """
+    from privforge.eval.protocol import _strongest_base
+
+    rows = [
+        _mk_row("medium", "B4", 1.0, 1, 0.70, 0.02),
+        _mk_row("medium", "B4", 1.0, 2, 0.62, 0.10),
+        _mk_row("medium", "B2", 1.0, 1, 0.60, 0.12),
+        _mk_row("medium", "B2", 1.0, 2, 0.70, 0.02),
+    ]
+    ref = _strongest_base(rows)
+    # B4 mean 0.66 > B2 mean 0.65 -> B4 is the reference on BOTH seeds,
+    # including seed2 where B2 happened to score higher.
+    assert ref == {
+        ("medium", 1, 1.0): 0.70,
+        ("medium", 2, 1.0): 0.62,
+    }
