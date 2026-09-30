@@ -1,0 +1,26 @@
+# PrivForge gitignore
+# Author: 晨星
+
+# Root-anchored scratch files (e.g. _smoke.py, _tune.py, _debug_hp.py, _probe.py).
+# Re-include any __init__.py that a root glob might match.
+/_*
+!/**/__init__.py
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+.coverage
+.coverage.*
+htmlcov/
+.env
+
+# Reproducible demo artifacts (not committed)
+benchmark.json
+benchmark_sweep.json
