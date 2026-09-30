@@ -72,17 +72,31 @@ def _group(results: list[EvalResult]):
     return flagship, baselines, by_ds
 
 
-def _best_base_by_seed(baselines: list[EvalResult]) -> dict[tuple[str, int, float], float]:
-    """Best baseline accuracy per (dataset, seed, epsilon).
+def _strongest_base(baselines: list[EvalResult]) -> dict[tuple[str, int, float], float]:
+    """Strongest single baseline's per-seed accuracy (SPEC section 4).
 
-    Keyed by epsilon too: "no regression" must compare like-for-like privacy
-    budgets. A flagship run at eps=0.05 scoring below a baseline that spent
-    eps=10 is not a regression -- it is a different price.
+    The reference method is chosen PER DATASET (and per epsilon for sweeps) as
+    the argmax over methods of the MEAN accuracy across seeds; every seed is
+    then paired against that SAME method's own accuracy. A per-seed envelope
+    (max over methods independently per seed) would be an oracle that no
+    single method can match -- unwinable by construction and NOT what the
+    contract defines as "最强单基线".
     """
+    accs_by: dict[tuple[str, float, str], list[float]] = {}
+    for r in baselines:
+        accs_by.setdefault((r.dataset, round(r.epsilon, 6), r.method), []).append(float(r.accuracy))
+    best_method: dict[tuple[str, float], str] = {}
+    best_mean: dict[tuple[str, float], float] = {}
+    for (ds, eps, meth), accs in accs_by.items():
+        mean = float(np.mean(accs))
+        if mean > best_mean.get((ds, eps), float("-inf")):
+            best_mean[(ds, eps)] = mean
+            best_method[(ds, eps)] = meth
     out: dict[tuple[str, int, float], float] = {}
     for r in baselines:
-        key = (r.dataset, r.seed, round(r.epsilon, 6))
-        out[key] = max(out.get(key, float("-inf")), r.accuracy)
+        eps6 = round(r.epsilon, 6)
+        if r.method == best_method.get((r.dataset, eps6)):
+            out[(r.dataset, r.seed, eps6)] = float(r.accuracy)
     return out
 
 
@@ -94,11 +108,10 @@ def evaluate_dod(results: list[EvalResult]) -> DodReport:
         rep.notes.append("no flagship (AQUA-DP) results supplied")
         return rep
 
-    # Best baseline accuracy per (dataset, seed, epsilon) -- used by DoD-2 and
-    # DoD-3. `EvalResult` intentionally carries no `u_best_base` field (it is
-    # derived from the baseline results, never stored per-row); we look it up
-    # here.
-    best_base = _best_base_by_seed(baselines)
+    # Strongest single baseline per (dataset, epsilon) -- used by DoD-2/3/4.
+    # `EvalResult` intentionally carries no `u_best_base` field (it is derived
+    # from the baseline results, never stored per-row); we look it up here.
+    best_base = _strongest_base(baselines)
 
     # ---- DoD-1: mean UGC >= 0.25 ---------------------------------------
     ugcs = np.array([r.ugc for r in flagship], dtype=np.float64)
