@@ -99,7 +99,7 @@ def cmd_dod(args: argparse.Namespace) -> int:
     rep = BenchmarkReport.from_json(str(args.json))
     dod = rep.dod()
     d = dod.as_dict()
-    print(f"DoD evaluation of {args.json} ({rep.n_results} results)")
+    print(f"DoD evaluation of {args.json} ({len(rep.results)} results)")
     for k, v in d.items():
         if k == "notes":
             continue
