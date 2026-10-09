@@ -1,154 +1,168 @@
-#!/usr/bin/env python
-"""PrivForge CLI (SPEC.md section 7).
+"""cli.py — PrivForge 命令行入口（argparse）。
 
-Subcommands
------------
-  demo        run the end-to-end demo (quick_benchmark) and write benchmark.json
-  benchmark  run a custom benchmark (--datasets/--epsilons/--seeds) -> json
-  dod        evaluate the DoD gates against a benchmark.json
-  verify     run the pytest suite
-
-All commands are reproducible: every stream is derived from the documented
-seed protocol (core/rng.py), so re-running yields byte-identical results.
-
-Usage
------
-  python cli.py demo
-  python cli.py benchmark --datasets medium heavy_tail --seeds 1 2 3 --epsilons 0.5 1.0 2.0
-  python cli.py dod benchmark.json
-  python cli.py verify
-
-Author: 晨星
+子命令：
+  benchmark  运行多方法×多 seed 基准，打印表格并落盘 benchmark.json
+  train      单方法训练，打印结果
+  selftest   快速跑通一个最小训练，验证环境
 """
 
 from __future__ import annotations
 
 import argparse
-import subprocess
+import json
+import os
 import sys
-from pathlib import Path
 
-from privforge import __author__, __version__
-from privforge.eval.report import BenchmarkReport
-from privforge.pipeline.flagship import AquaConfig
-from privforge.pipeline.pipeline import quick_benchmark, run_benchmark
+# 允许 `python cli.py` 直接运行：把仓库根加入路径。
+_ROOT = os.path.dirname(os.path.abspath(__file__))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
-ROOT = Path(__file__).resolve().parent
-
-
-def _fmt_row(r) -> str:
-    return (
-        f"{r.dataset:<12} {r.method:<9} {r.epsilon:>6.3f} {r.seed:>5} "
-        f"{r.accuracy:>8.4f} {r.ugc:>+8.3f} {r.uac:>7.3f} {r.eps_spent:>8.4f}"
-    )
+from pipeline.pipeline import PrivForgePipeline  # noqa: E402
+from training.base import TrainConfig  # noqa: E402
 
 
-def _emit(rep: BenchmarkReport, out: Path) -> None:
-    # Persist the raw results BEFORE any DoD evaluation: a gate crash must
-    # never cost the benchmark compute (it happened once -- 35 min lost).
-    rep.to_json(str(out))
-    dod = rep.dod()
-    print(f"PrivForge v{__version__}  author={__author__}")
-    print(
-        f"{'dataset':<12} {'method':<9} {'eps':>6} {'seed':>5} "
-        f"{'acc':>8} {'ugc':>8} {'uac':>7} {'spent':>8}"
-    )
-    for r in rep.results:
-        print(_fmt_row(r))
-    d = dod.as_dict()
-    print("\nDoD gates:")
-    for k, v in d.items():
-        if k == "notes":
+def _print_summary(report) -> None:
+    print("\n=== 汇总（mean±std，多 seed）===")
+    print(f"{'方法':<18}{'acc_mean':>10}{'acc_std':>9}{'excess':>9}  privacy(ε,δ)")
+    for m, s in report.summary.items():
+        if m.startswith("_"):
             continue
-        mark = "✅" if (isinstance(v, bool) and v) else ("⚠️ " if isinstance(v, bool) else "")
-        print(f"  {mark}{k}: {v}")
-    for n in d["notes"]:
-        print(f"  - {n}")
-    print(f"\nwrote {out}")
-
-
-def cmd_demo(args: argparse.Namespace) -> int:
-    cfg = AquaConfig(T=args.T, do_audit=False)
-    rep = (
-        quick_benchmark()
-        if args.quick
-        else run_benchmark(
-            datasets=tuple(args.datasets),
-            epsilons=tuple(args.epsilons),
-            seeds=tuple(args.seeds),
-            config=cfg,
+        priv = s.get("privacy")
+        if priv:
+            priv_s = f"({priv['epsilon']:.2f},{priv['delta']:.0e})"
+        else:
+            priv_s = "non-private"
+        print(
+            f"{m:<18}{s['accuracy_mean']:>10.4f}{s['accuracy_std']:>9.4f}"
+            f"{s.get('excess_loss_vs_nonprivate', 0):>9.4f}  {priv_s}"
         )
+    ab = report.ablation
+    if ab and "accuracy_diff_mean_pp" in ab:
+        print("\n=== 消融：DPFuse vs FixedClip（相同 ε,δ）===")
+        print(f"  Δacc(mean) = {ab['accuracy_diff_mean_pp']:+.4f} pp | 显著={ab['significant']}")
+
+
+def cmd_benchmark(args) -> int:
+    cfg = TrainConfig(
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        learning_rate=args.lr,
+        sigma=args.sigma,
+        clip_norm=args.clip,
+        seed=0,
+        hidden1=args.h1,
+        hidden2=args.h2,
     )
-    _emit(rep, ROOT / args.out)
-    return 0
-
-
-def cmd_benchmark(args: argparse.Namespace) -> int:
-    cfg = AquaConfig(T=args.T, do_audit=args.audit, audit_trials=args.audit_trials)
-    rep = run_benchmark(
-        datasets=tuple(args.datasets),
-        epsilons=tuple(args.epsilons),
+    pipe = PrivForgePipeline(
+        methods=tuple(args.methods),
         seeds=tuple(args.seeds),
-        config=cfg,
+        cfg=cfg,
+        delta=args.delta,
+        n_samples=args.n_samples,
+        n_features=args.n_features,
+        separation=args.separation,
+        include_reference=True,
+        outlier_frac=args.outlier_frac,
+        outlier_scale=args.outlier_scale,
     )
-    _emit(rep, ROOT / args.out)
+    report = pipe.run()
+    os.makedirs(args.out_dir, exist_ok=True)
+    out_path = os.path.join(args.out_dir, "benchmark.json")
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(report.as_dict(), f, ensure_ascii=False, indent=2)
+    _print_summary(report)
+    print(f"\nbenchmark.json -> {out_path}")
     return 0
 
 
-def cmd_dod(args: argparse.Namespace) -> int:
-    rep = BenchmarkReport.from_json(str(args.json))
-    dod = rep.dod()
-    d = dod.as_dict()
-    print(f"DoD evaluation of {args.json} ({len(rep.results)} results)")
-    for k, v in d.items():
-        if k == "notes":
-            continue
-        mark = "✅" if (isinstance(v, bool) and v) else ("⚠️ " if isinstance(v, bool) else "")
-        print(f"  {mark}{k}: {v}")
-    for n in d["notes"]:
-        print(f"  - {n}")
-    return 0 if d["all_passed"] else 1
+def cmd_train(args) -> int:
+    cfg = TrainConfig(
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        learning_rate=args.lr,
+        sigma=args.sigma,
+        clip_norm=args.clip,
+        seed=args.seed,
+        hidden1=args.h1,
+        hidden2=args.h2,
+    )
+    pipe = PrivForgePipeline(
+        methods=(args.method,),
+        seeds=(args.seed,),
+        cfg=cfg,
+        n_samples=args.n_samples,
+        n_features=args.n_features,
+        separation=args.separation,
+        outlier_frac=args.outlier_frac,
+        outlier_scale=args.outlier_scale,
+    )
+    r = pipe.run_single(args.method, args.seed)
+    print(json.dumps(r.as_dict(), ensure_ascii=False, indent=2))
+    return 0
 
 
-def cmd_verify(args: argparse.Namespace) -> int:
-    cmd = [sys.executable, "-m", "pytest", "-q", "-W", "ignore::UserWarning", "tests"]
-    proc = subprocess.run(cmd, cwd=ROOT)
-    return proc.returncode
+def cmd_selftest(args) -> int:
+    cfg = TrainConfig(epochs=2, batch_size=256, sigma=1.0, clip_norm=1.0, seed=0)
+    pipe = PrivForgePipeline(methods=("DPFuse",), seeds=(0,), cfg=cfg, n_samples=800)
+    r = pipe.run_single("DPFuse", 0)
+    print(
+        f"selftest OK: DPFuse acc={r.test_accuracy:.4f} "
+        f"ε={r.privacy.epsilon if r.privacy else 'NA'}"
+    )
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="privforge", description="PrivForge DP-ML toolkit")
+    p = argparse.ArgumentParser(prog="privforge", description="差分隐私机器学习系统")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    d = sub.add_parser("demo", help="run the end-to-end demo")
-    d.add_argument("--quick", action="store_true", help="quick single-dataset demo")
-    d.add_argument("--T", type=int, default=80)
-    d.add_argument("--datasets", nargs="+", default=["medium"])
-    d.add_argument("--seeds", nargs="+", type=int, default=[1])
-    d.add_argument("--epsilons", nargs="+", type=float, default=[1.0])
-    d.add_argument("--out", default="benchmark.json")
-    d.set_defaults(func=cmd_demo)
-
-    b = sub.add_parser("benchmark", help="run a custom benchmark")
-    b.add_argument("--datasets", nargs="+", default=["medium", "heavy_tail", "hard_lowsep"])
-    b.add_argument("--seeds", nargs="+", type=int, default=[1, 2, 3])
-    b.add_argument("--epsilons", nargs="+", type=float, default=[1.0])
-    b.add_argument("--T", type=int, default=100)
-    b.add_argument("--audit", action="store_true")
-    b.add_argument("--audit-trials", dest="audit_trials", type=int, default=40)
-    b.add_argument("--out", default="benchmark.json")
+    b = sub.add_parser("benchmark", help="运行基准")
+    b.add_argument("--methods", nargs="+", default=["NonPrivate", "FixedClip-DP-SGD", "DPFuse"])
+    b.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2])
+    b.add_argument("--epochs", type=int, default=30)
+    b.add_argument("--batch-size", type=int, default=256)
+    b.add_argument("--lr", type=float, default=0.5)
+    b.add_argument("--sigma", type=float, default=1.5)
+    b.add_argument("--clip", type=float, default=1.0)
+    b.add_argument("--delta", type=float, default=1e-5)
+    b.add_argument("--h1", type=int, default=32)
+    b.add_argument("--h2", type=int, default=16)
+    b.add_argument("--n-samples", type=int, default=4000)
+    b.add_argument("--n-features", type=int, default=20)
+    b.add_argument("--separation", type=float, default=1.6)
+    b.add_argument("--outlier-frac", type=float, default=0.1)
+    b.add_argument("--outlier-scale", type=float, default=8.0)
+    b.add_argument("--out-dir", default="examples")
     b.set_defaults(func=cmd_benchmark)
 
-    g = sub.add_parser("dod", help="evaluate DoD gates on a benchmark.json")
-    g.add_argument("json")
-    g.set_defaults(func=cmd_dod)
+    t = sub.add_parser("train", help="单方法训练")
+    t.add_argument("--method", default="DPFuse")
+    t.add_argument("--seed", type=int, default=0)
+    t.add_argument("--epochs", type=int, default=30)
+    t.add_argument("--batch-size", type=int, default=256)
+    t.add_argument("--lr", type=float, default=0.5)
+    t.add_argument("--sigma", type=float, default=1.5)
+    t.add_argument("--clip", type=float, default=1.0)
+    t.add_argument("--h1", type=int, default=32)
+    t.add_argument("--h2", type=int, default=16)
+    t.add_argument("--n-samples", type=int, default=4000)
+    t.add_argument("--n-features", type=int, default=20)
+    t.add_argument("--separation", type=float, default=1.6)
+    t.add_argument("--outlier-frac", type=float, default=0.1)
+    t.add_argument("--outlier-scale", type=float, default=8.0)
+    t.set_defaults(func=cmd_train)
 
-    v = sub.add_parser("verify", help="run the pytest suite")
-    v.set_defaults(func=cmd_verify)
+    s = sub.add_parser("selftest", help="环境自检")
+    s.set_defaults(func=cmd_selftest)
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        pass
     args = build_parser().parse_args(argv)
     return args.func(args)
 

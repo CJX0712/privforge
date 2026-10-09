@@ -1,25 +1,8 @@
-Mako==1.4.3
-MarkupSafe==3.0.3
-PyYAML==6.0.3
-Pygments==2.21.0
-SQLAlchemy==2.1.1
-alembic==1.20.0
-cloudpickle==3.1.2
-colorama==0.4.6
-colorlog==6.12.0
-coverage==7.16.2
-diffprivlib==0.6.6
-iniconfig==2.3.0
-joblib==1.6.0
+# 构建时锁定的依赖版本（capture from build env，CI 同版本安装以避免 numpy 漂移翻转门禁）
+# 生成：python -m pip freeze | grep -iE "^(numpy|scikit-learn|scipy|optuna|pytest|ruff)="
 numpy==2.5.3
-optuna==5.0.0
-packaging==26.3
-pluggy==1.6.0
-pytest-cov==7.1.0
-pytest==9.1.1
-ruff==0.16.9
 scikit-learn==1.6.1
 scipy==1.16.3
-threadpoolctl==3.7.0
-tqdm==4.70.1
-typing_extensions==4.16.0
+optuna==5.0.0
+pytest==9.1.1
+ruff==0.16.9

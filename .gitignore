@@ -1,26 +1,39 @@
-# PrivForge gitignore
-# Author: 晨星
+# 虚拟环境
+venv/
+.venv/
+envs/
 
-# Root-anchored scratch files (e.g. _smoke.py, _tune.py, _debug_hp.py, _probe.py).
-# Re-include any __init__.py that a root glob might match.
-/_*
-!/**/__init__.py
-
-# Python
+# Python 缓存
 __pycache__/
 *.py[cod]
+*.egg-info/
 .pytest_cache/
 .ruff_cache/
-build/
-dist/
-*.egg-info/
-.venv/
-venv/
-.coverage
-.coverage.*
-htmlcov/
+
+# 数据缓存 / 模型权重
+*.npz
+*.npy
+*.ckpt
+*.pt
+*.onnx
+models/
+
+# 密钥
+*.key
+*.pem
+secrets*
 .env
 
-# Reproducible demo artifacts (not committed)
+# 编辑器
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# 构建产物
+build/
+dist/
+
+# 生成物
+examples/benchmark.json
 benchmark.json
-benchmark_sweep.json

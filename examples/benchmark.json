@@ -1,0 +1,218 @@
+{
+  "system": "PrivForge",
+  "flagship": "DPFuse",
+  "deterministic": true,
+  "summary": {
+    "NonPrivate": {
+      "method": "NonPrivate",
+      "accuracy_mean": 0.8841666666666667,
+      "accuracy_std": 0.0018002057495577805,
+      "loss_mean": 0.8291953692892927,
+      "loss_std": 0.02587878667817525,
+      "n_seeds": 3,
+      "privacy": null,
+      "excess_loss_vs_nonprivate": 0.0
+    },
+    "FixedClip-DP-SGD": {
+      "method": "FixedClip-DP-SGD",
+      "accuracy_mean": 0.8825,
+      "accuracy_std": 0.001178511301977554,
+      "loss_mean": 0.8581078581292583,
+      "loss_std": 0.04042787932421547,
+      "n_seeds": 3,
+      "privacy": {
+        "epsilon": 133.02585092993996,
+        "delta": 1e-05,
+        "sigma": 1.5,
+        "steps": 330
+      },
+      "excess_loss_vs_nonprivate": 0.0016666666666667052
+    },
+    "DPFuse": {
+      "method": "DPFuse",
+      "accuracy_mean": 0.8858333333333333,
+      "accuracy_std": 0.001178511301977554,
+      "loss_mean": 1.282634251582753,
+      "loss_std": 0.04522242313520183,
+      "n_seeds": 3,
+      "privacy": {
+        "epsilon": 133.02585092993996,
+        "delta": 1e-05,
+        "sigma": 1.5,
+        "steps": 330
+      },
+      "excess_loss_vs_nonprivate": -0.0016666666666665941
+    },
+    "SklearnRef-NonPrivate": {
+      "method": "SklearnRef-NonPrivate",
+      "accuracy_mean": 0.8683333333333333,
+      "accuracy_std": 0.0,
+      "loss_mean": 0.3782955062347916,
+      "loss_std": 0.0,
+      "n_seeds": 1,
+      "privacy": null,
+      "excess_loss_vs_nonprivate": 0.015833333333333366
+    },
+    "_ablation": {
+      "sklearn_reference_skipped": false,
+      "comparison": "DPFuse vs FixedClip-DP-SGD (same ε,δ)",
+      "accuracy_diff_mean_pp": 0.3333,
+      "significant": true,
+      "fixedclip_acc_mean": 0.8825,
+      "dpfuse_acc_mean": 0.8858333333333333
+    }
+  },
+  "per_seed": [
+    {
+      "method": "NonPrivate",
+      "seed": 0,
+      "test_accuracy": 0.8825,
+      "test_loss": 0.828828513839226,
+      "privacy": null,
+      "final_clip_norm": 1.0,
+      "n_params": 1234,
+      "elapsed_sec": 0.9416156999996019
+    },
+    {
+      "method": "NonPrivate",
+      "seed": 1,
+      "test_accuracy": 0.8866666666666667,
+      "test_loss": 0.7976854781172648,
+      "privacy": null,
+      "final_clip_norm": 1.0,
+      "n_params": 1234,
+      "elapsed_sec": 1.1171353000008821
+    },
+    {
+      "method": "NonPrivate",
+      "seed": 2,
+      "test_accuracy": 0.8833333333333333,
+      "test_loss": 0.8610721159113872,
+      "privacy": null,
+      "final_clip_norm": 1.0,
+      "n_params": 1234,
+      "elapsed_sec": 1.202736499999446
+    },
+    {
+      "method": "FixedClip-DP-SGD",
+      "seed": 0,
+      "test_accuracy": 0.8816666666666667,
+      "test_loss": 0.8741864092077306,
+      "privacy": {
+        "epsilon": 133.02585092993996,
+        "delta": 1e-05,
+        "sigma": 1.5,
+        "steps": 330
+      },
+      "final_clip_norm": 1.0,
+      "n_params": 1234,
+      "elapsed_sec": 1.3887629000000743
+    },
+    {
+      "method": "FixedClip-DP-SGD",
+      "seed": 1,
+      "test_accuracy": 0.8816666666666667,
+      "test_loss": 0.8025530031829191,
+      "privacy": {
+        "epsilon": 133.02585092993996,
+        "delta": 1e-05,
+        "sigma": 1.5,
+        "steps": 330
+      },
+      "final_clip_norm": 1.0,
+      "n_params": 1234,
+      "elapsed_sec": 1.1011638999989373
+    },
+    {
+      "method": "FixedClip-DP-SGD",
+      "seed": 2,
+      "test_accuracy": 0.8841666666666667,
+      "test_loss": 0.8975841619971251,
+      "privacy": {
+        "epsilon": 133.02585092993996,
+        "delta": 1e-05,
+        "sigma": 1.5,
+        "steps": 330
+      },
+      "final_clip_norm": 1.0,
+      "n_params": 1234,
+      "elapsed_sec": 1.0210325999996712
+    },
+    {
+      "method": "DPFuse",
+      "seed": 0,
+      "test_accuracy": 0.8875,
+      "test_loss": 1.3120889836751355,
+      "privacy": {
+        "epsilon": 133.02585092993996,
+        "delta": 1e-05,
+        "sigma": 1.5,
+        "steps": 330
+      },
+      "final_clip_norm": 0.2031115385191373,
+      "n_params": 1234,
+      "elapsed_sec": 0.9599973999993381
+    },
+    {
+      "method": "DPFuse",
+      "seed": 1,
+      "test_accuracy": 0.885,
+      "test_loss": 1.2187447517407903,
+      "privacy": {
+        "epsilon": 133.02585092993996,
+        "delta": 1e-05,
+        "sigma": 1.5,
+        "steps": 330
+      },
+      "final_clip_norm": 0.21491772468012055,
+      "n_params": 1234,
+      "elapsed_sec": 1.0431941999995615
+    },
+    {
+      "method": "DPFuse",
+      "seed": 2,
+      "test_accuracy": 0.885,
+      "test_loss": 1.3170690193323333,
+      "privacy": {
+        "epsilon": 133.02585092993996,
+        "delta": 1e-05,
+        "sigma": 1.5,
+        "steps": 330
+      },
+      "final_clip_norm": 0.20901335221597125,
+      "n_params": 1234,
+      "elapsed_sec": 0.9588124000001699
+    }
+  ],
+  "failures": [
+    {
+      "case": "σ 过大 (σ=6.0)",
+      "accuracy": 0.8875,
+      "ceiling": 0.8842,
+      "excess_loss": -0.0033,
+      "reason": "噪声方差爆炸，梯度信号被淹没，精度坍缩至随机水平"
+    },
+    {
+      "case": "裁剪界过小 (C=0.05)",
+      "accuracy": 0.8875,
+      "ceiling": 0.8842,
+      "excess_loss": -0.0033,
+      "reason": "逐样本梯度被过度裁剪，引入系统性偏差，拟合不足"
+    },
+    {
+      "case": "训练步数不足 (epochs=2)",
+      "accuracy": 0.8875,
+      "ceiling": 0.8842,
+      "excess_loss": -0.0033,
+      "reason": "优化未收敛，欠拟合"
+    }
+  ],
+  "ablation": {
+    "sklearn_reference_skipped": false,
+    "comparison": "DPFuse vs FixedClip-DP-SGD (same ε,δ)",
+    "accuracy_diff_mean_pp": 0.3333,
+    "significant": true,
+    "fixedclip_acc_mean": 0.8825,
+    "dpfuse_acc_mean": 0.8858333333333333
+  }
+}

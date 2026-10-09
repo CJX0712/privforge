@@ -1,5 +1,12 @@
-numpy==2.5.3
-scipy==1.16.3
-scikit-learn==1.6.1
-diffprivlib==0.6.6
-optuna==5.0.0
+# PrivForge 运行依赖
+# 核心引擎仅依赖 numpy（离线兜底、确定性可复现、CPU-only）。
+numpy>=1.24
+
+# Tier-0 世界顶级开源（可选；不可用时自动降级，不阻塞系统）
+scikit-learn>=1.5.0 # 非私有参考后端（MLPClassifier）
+scipy>=1.10.0 # 科学计算数学内核
+optuna>=3.0            # 可选超参优化（HPO）
+
+# 开发 / 测试 / lint
+pytest>=7.0
+ruff>=0.4
